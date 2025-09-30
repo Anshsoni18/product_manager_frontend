@@ -24,16 +24,48 @@ api.interceptors.request.use(
   }
 )
 
-// Response interceptor to handle auth errors
+// Response interceptor to handle auth errors and token refresh
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      // Token expired or invalid, redirect to login
-      localStorage.removeItem('token')
-      localStorage.removeItem('userRole')
-      localStorage.removeItem('userEmail')
-      window.location.href = '/login'
+  async (error) => {
+    const originalRequest = error.config
+    
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true
+      
+      const refreshToken = localStorage.getItem('refreshToken')
+      
+      if (refreshToken) {
+        try {
+          // Try to refresh the token
+          const response = await authAPI.refresh(refreshToken)
+          const { access_token, refresh_token } = response.data
+          
+          // Update stored tokens
+          localStorage.setItem('token', access_token)
+          localStorage.setItem('refreshToken', refresh_token)
+          
+          // Update the original request with new token
+          originalRequest.headers.Authorization = `Bearer ${access_token}`
+          
+          // Retry the original request
+          return api(originalRequest)
+        } catch (refreshError) {
+          // Refresh failed, redirect to login
+          localStorage.removeItem('token')
+          localStorage.removeItem('refreshToken')
+          localStorage.removeItem('userRole')
+          localStorage.removeItem('userEmail')
+          window.location.href = '/login'
+        }
+      } else {
+        // No refresh token, redirect to login
+        localStorage.removeItem('token')
+        localStorage.removeItem('refreshToken')
+        localStorage.removeItem('userRole')
+        localStorage.removeItem('userEmail')
+        window.location.href = '/login'
+      }
     }
     return Promise.reject(error)
   }
@@ -43,6 +75,8 @@ api.interceptors.response.use(
 export const authAPI = {
   login: (email, password) => 
     api.post('/api/users/login', { email, password }),
+  refresh: (refreshToken) => 
+    api.post('/api/users/refresh', { refresh_token: refreshToken }),
 }
 
 // Categories API
@@ -54,6 +88,7 @@ export const categoriesAPI = {
 export const productsAPI = {
   getAll: () => api.get('/api/products/'),
   create: (productData) => api.post('/api/products/', productData),
+  delete: (productId) => api.delete(`/api/products/${productId}`),
 }
 
 export default api

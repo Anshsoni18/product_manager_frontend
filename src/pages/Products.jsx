@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react'
 import Sidebar from '../components/layout/Sidebar'
 import { productsAPI } from '../services/api'
-import { Package, Tag } from 'lucide-react'
+import { Package, Tag, Trash2, AlertTriangle } from 'lucide-react'
 
 const Products = () => {
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [deleteConfirm, setDeleteConfirm] = useState(null)
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     fetchProducts()
@@ -29,6 +31,21 @@ const Products = () => {
   const formatINR = (price) => {
     const formattedPrice = new Intl.NumberFormat('en-IN').format(price)
     return `Rs. ${formattedPrice}/-`
+  }
+
+  const handleDeleteProduct = async (productId) => {
+    setDeleting(true)
+    try {
+      await productsAPI.delete(productId)
+      // Remove product from local state
+      setProducts(products.filter(product => product.id !== productId))
+      setDeleteConfirm(null)
+    } catch (error) {
+      setError('Failed to delete product')
+      console.error('Error deleting product:', error)
+    } finally {
+      setDeleting(false)
+    }
   }
 
   if (loading) {
@@ -84,6 +101,9 @@ const Products = () => {
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Tags
                       </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Actions
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
@@ -138,6 +158,15 @@ const Products = () => {
                             )}
                           </div>
                         </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <button
+                            onClick={() => setDeleteConfirm(product)}
+                            className="text-red-600 hover:text-red-900 p-1 rounded-md hover:bg-red-50 transition-colors"
+                            title="Delete product"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -169,6 +198,56 @@ const Products = () => {
           )}
         </div>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-md w-full">
+            <div className="flex items-center justify-between p-6 border-b">
+              <div className="flex items-center">
+                <div className="bg-red-100 rounded-full p-2 mr-3">
+                  <AlertTriangle className="h-5 w-5 text-red-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">Delete Product</h3>
+                  <p className="text-sm text-gray-600">This action cannot be undone</p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="p-6">
+              <p className="text-gray-700 mb-4">
+                Are you sure you want to delete <strong>"{deleteConfirm.name}"</strong>? 
+                This will permanently remove the product from the system.
+              </p>
+              
+              <div className="flex justify-end space-x-3">
+                <button
+                  onClick={() => setDeleteConfirm(null)}
+                  disabled={deleting}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => handleDeleteProduct(deleteConfirm.id)}
+                  disabled={deleting}
+                  className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors disabled:opacity-50 flex items-center"
+                >
+                  {deleting ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Deleting...
+                    </>
+                  ) : (
+                    'Delete Product'
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

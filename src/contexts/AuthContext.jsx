@@ -18,10 +18,11 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     // Check if user is logged in on app start
     const token = localStorage.getItem('token')
+    const refreshToken = localStorage.getItem('refreshToken')
     const userRole = localStorage.getItem('userRole')
     const userEmail = localStorage.getItem('userEmail')
     
-    if (token && userRole && userEmail) {
+    if (token && refreshToken && userRole && userEmail) {
       try {
         // Verify token is still valid
         const decodedToken = jwtDecode(token)
@@ -31,17 +32,20 @@ export const AuthProvider = ({ children }) => {
           setUser({
             email: userEmail,
             role: userRole,
-            token: token
+            token: token,
+            refreshToken: refreshToken
           })
         } else {
           // Token expired, clear storage
           localStorage.removeItem('token')
+          localStorage.removeItem('refreshToken')
           localStorage.removeItem('userRole')
           localStorage.removeItem('userEmail')
         }
       } catch (error) {
         // Invalid token, clear storage
         localStorage.removeItem('token')
+        localStorage.removeItem('refreshToken')
         localStorage.removeItem('userRole')
         localStorage.removeItem('userEmail')
       }
@@ -49,19 +53,22 @@ export const AuthProvider = ({ children }) => {
     setLoading(false)
   }, [])
 
-  const login = (token, userRole, userEmail) => {
+  const login = (token, refreshToken, userRole, userEmail) => {
     localStorage.setItem('token', token)
+    localStorage.setItem('refreshToken', refreshToken)
     localStorage.setItem('userRole', userRole)
     localStorage.setItem('userEmail', userEmail)
     setUser({
       email: userEmail,
       role: userRole,
-      token: token
+      token: token,
+      refreshToken: refreshToken
     })
   }
 
   const logout = () => {
     localStorage.removeItem('token')
+    localStorage.removeItem('refreshToken')
     localStorage.removeItem('userRole')
     localStorage.removeItem('userEmail')
     setUser(null)

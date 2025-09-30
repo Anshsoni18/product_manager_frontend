@@ -29,9 +29,9 @@ const Login = () => {
 
     try {
       const response = await authAPI.login(formData.email, formData.password)
-      const { access_token, user_role, user_email } = response.data
+      const { access_token, refresh_token, user_role, user_email } = response.data
       
-      login(access_token, user_role, user_email)
+      login(access_token, refresh_token, user_role, user_email)
       navigate('/dashboard', { replace: true })
     } catch (error) {
       setError(
